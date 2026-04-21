@@ -1,55 +1,72 @@
+import PlanningScene from "./components/PlanningScene";
+
 export default function App() {
   return (
-    <main style={{ maxWidth: 960, margin: "0 auto", padding: "48px 24px", fontFamily: "Inter, system-ui, sans-serif" }}>
-      <h1 style={{ fontSize: 48, marginBottom: 12 }}>driftless</h1>
-      <p style={{ fontSize: 20, lineHeight: 1.5, maxWidth: 720 }}>
-        Minimal autonomy stack for state estimation and navigation.
-      </p>
+    <main
+      style={{
+        maxWidth: 1100,
+        margin: "0 auto",
+        padding: "48px 24px 80px",
+        fontFamily: "Inter, system-ui, sans-serif",
+        boxSizing: "border-box",
+        overflowX: "hidden",
+      }}
+    >
+      {/* Splash / hero */}
+      <section style={{ marginBottom: 56 }}>
+        <h1 style={{ fontSize: 56, margin: "0 0 12px" }}>driftless</h1>
 
-      <p style={{ fontSize: 16, lineHeight: 1.6, maxWidth: 720, marginTop: 16 }}>
-        Driftless is a lightweight robotics sandbox for EKF-based localization and classical planning.
-        The repo currently includes noisy-sensor state estimation, grid-based path planning, and
-        simple visualizations for understanding autonomy behavior under uncertainty.
-      </p>
+        <p style={{ fontSize: 22, lineHeight: 1.5, maxWidth: 760, margin: 0 }}>
+          Minimal autonomy stack for state estimation and navigation.
+        </p>
 
-      <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
-        <a
-          href="https://github.com/gustavojcorrea/driftless"
-          target="_blank"
-          rel="noreferrer"
+        <p
           style={{
-            padding: "12px 16px",
-            border: "1px solid #ccc",
-            borderRadius: 10,
-            textDecoration: "none",
-            color: "inherit"
+            fontSize: 16,
+            lineHeight: 1.7,
+            maxWidth: 760,
+            color: "#444",
+            marginTop: 18,
           }}
         >
-          View GitHub
-        </a>
-      </div>
+          Driftless is a lightweight robotics sandbox for EKF-based localization,
+          path planning, and autonomy visualization. The goal is to make core
+          robotics ideas easier to inspect, modify, and extend.
+        </p>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 40 }}>
-        <div style={{ border: "1px solid #ddd", borderRadius: 16, padding: 20 }}>
-          <h2 style={{ marginTop: 0 }}>EKF Localization</h2>
-          <p>
-            From-scratch Extended Kalman Filter for 2D robot localization under noisy sensing.
-          </p>
-        </div>
-
-        <div style={{ border: "1px solid #ddd", borderRadius: 16, padding: 20 }}>
-          <h2 style={{ marginTop: 0 }}>A* Path Planning</h2>
-          <p>
-            Grid-based path planning with obstacles, path visualization, and cost evaluation.
-          </p>
+        <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
+          <a
+            href="https://github.com/gustavojcorrea/driftless"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              padding: "12px 16px",
+              border: "1px solid #ccc",
+              borderRadius: 10,
+              textDecoration: "none",
+              color: "inherit",
+            }}
+          >
+            View GitHub
+          </a>
         </div>
       </section>
 
-      <section style={{ marginTop: 48 }}>
-        <h2>Next</h2>
-        <p>
-          Interactive dashboard with estimation visualizations, planning demos, and lightweight 3D rendering.
-        </p>
+      {/* Planning row */}
+      <section>
+        <div style={{ marginBottom: 18 }}>
+          <h2 style={{ margin: "0 0 8px", fontSize: 28 }}>Planning Demo</h2>
+          <p style={{ margin: 0, color: "#444", maxWidth: 760, lineHeight: 1.6 }}>
+            Simple grid-based path planning with obstacles, start/goal markers,
+            and trajectory visualization.
+          </p>
+        </div>
+
+        <PlanningScene />
+
+        <div style={{ marginTop: 14, color: "#444", fontSize: 15 }}>
+          Path cost: <strong>14.0</strong>
+        </div>
       </section>
     </main>
   );
