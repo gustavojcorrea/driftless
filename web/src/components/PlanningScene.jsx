@@ -45,50 +45,14 @@ function Marker({ row, col, rows, cols, color }) {
   );
 }
 
-// function PathLine({ rows, cols, path }) {
-//   const points = path.map(([r, c]) => {
-//     const [x, , z] = cellToWorld(r, c, rows, cols);
-//     return [x, 0.12, z];
-//   });
+function PathLine({ rows, cols, path }) {
+  const points = path.map(([r, c]) => {
+    const [x, , z] = cellToWorld(r, c, rows, cols);
+    return [x, 0.12, z];
+  });
 
-//   return <Line points={points} color="#2563eb" lineWidth={3} />;
-// }
-
-// function PathLine({ rows, cols, path, algorithm }) {
-//     const points = path.map((pt) => {
-//       if (algorithm === "apf") {
-//         const col = pt[0];
-//         const row = pt[1];
-//         const x = col - cols / 2 + 0.5;
-//         const z = row - rows / 2 + 0.5;
-//         return [x, 0.12, z];
-//       }
-  
-//       const [r, c] = pt;
-//       const [x, , z] = cellToWorld(r, c, rows, cols);
-//       return [x, 0.12, z];
-//     });
-  
-//     return <Line points={points} color="#2563eb" lineWidth={3} />;
-//   }
-
-function PathLine({ rows, cols, path, algorithm }) {
-    const points = path.map((pt) => {
-      if (algorithm === "apf") {
-        const col = pt[0];
-        const row = pt[1];
-        const x = col - cols / 2 + 0.5;
-        const z = row - rows / 2 + 0.5;
-        return [x, 0.12, z];
-      }
-  
-      const [r, c] = pt;
-      const [x, , z] = cellToWorld(r, c, rows, cols);
-      return [x, 0.12, z];
-    });
-  
-    return <Line points={points} color="#2563eb" lineWidth={3} />;
-  }
+  return <Line points={points} color="#2563eb" lineWidth={3} />;
+}
 
 function ExploredCells({ rows, cols, exploredCells, visibleCount }) {
   return exploredCells.slice(0, visibleCount).map(([r, c], i) => {
@@ -278,49 +242,15 @@ const result = useMemo(() => {
         return () => clearInterval(interval);
     }, [playbackCount, showSearch, searchSpeed, mapKey, diagonal, algorithm]);
 
-//   useEffect(() => {
-//     if (!showSearch) {
-//       setVisibleExplored(exploredOrder.length);
-//       return;
-//     }
-
-//     setVisibleExplored(0);
-
-//     let i = 0;
-//     const interval = setInterval(() => {
-//       i += 1;
-//       setVisibleExplored(i);
-//       if (i >= exploredOrder.length) clearInterval(interval);
-//     }, 1000 / searchSpeed);
-
-//     return () => clearInterval(interval);
-//   }, [exploredOrder, showSearch, searchSpeed, mapKey, diagonal]);
-
-//   const pathPoints = useMemo(() => {
-//     return path.map(([r, c]) => {
-//       const [x, , z] = cellToWorld(r, c, rows, cols);
-//       return [x, 0.16, z];
-//     });
-//   }, [path, rows, cols]);
-
   const pathPoints = useMemo(() => {
-    return path.map((pt) => {
-      if (algorithm === "apf") {
-        const col = pt[0];
-        const row = pt[1];
-        const x = col - cols / 2 + 0.5;
-        const z = row - rows / 2 + 0.5;
-        return [x, 0.16, z];
-      }
-  
-      const [r, c] = pt;
+    return path.map(([r, c]) => {
       const [x, , z] = cellToWorld(r, c, rows, cols);
       return [x, 0.16, z];
     });
-  }, [path, rows, cols, algorithm]);
+  }, [path, rows, cols]);
 
-//   const robotCanMove = isPlaying && visibleExplored >= exploredOrder.length;
-  const robotCanMove = isPlaying && visibleExplored >= playbackCount;
+  const robotCanMove =
+    isPlaying && (algorithm === "apf" || visibleExplored >= playbackCount);
   return (
     <div>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
@@ -452,7 +382,7 @@ const result = useMemo(() => {
       <Marker row={goal[0]} col={goal[1]} rows={rows} cols={cols} color="#dc2626" />
 
       {showPath && path.length > 0 && (
-        <PathLine rows={rows} cols={cols} path={path} algorithm={algorithm} />
+        <PathLine rows={rows} cols={cols} path={path} />
         )}
 
       {pathPoints.length > 0 && (

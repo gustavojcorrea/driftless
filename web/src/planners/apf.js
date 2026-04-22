@@ -22,19 +22,37 @@ function distance2D(a, b) {
     return [v[0] * s, v[1] * s];
   }
   
-  function obstacleCentersFromGrid(grid) {
-    const centers = [];
-    for (let r = 0; r < grid.length; r++) {
+function obstacleCentersFromGrid(grid) {
+  const centers = [];
+  for (let r = 0; r < grid.length; r++) {
       for (let c = 0; c < grid[0].length; c++) {
         if (grid[r][c] === 1) {
           centers.push([c, r]); // x = col, z = row in grid coordinates
         }
       }
     }
-    return centers;
-  }
-  
-  export function apf(grid, start, goal, options = {}) {
+  return centers;
+}
+
+function toGridCell(point) {
+  return [point[1], point[0]];
+}
+
+function toPlannerResult(path, explored, debugLog, success) {
+  const gridPath = path.map(toGridCell);
+
+  return {
+    path: gridPath,
+    cost: pathLength(path),
+    explored,
+    exploredOrder: [],
+    debugLog,
+    success,
+    meta: { algorithm: "apf" },
+  };
+}
+
+export function apf(grid, start, goal, options = {}) {
     const {
       kAtt = 1.0,
       kRep = 8.0,
@@ -84,47 +102,24 @@ function distance2D(a, b) {
       );
   
       if (distance2D(p, g) < goalTolerance) {
+        path.push([...g]);
         debugLog.push("Goal reached.");
-        return {
-          path,
-          cost: pathLength(path),
-          explored: i + 1,
-          exploredOrder: [],
-          debugLog,
-          success: true,
-          meta: { algorithm: "apf" },
-        };
+        return toPlannerResult(path, i + 1, debugLog, true);
       }
-  
+
       if (fMag < 1e-4) {
         debugLog.push("Stopped: force magnitude too small (likely local minimum).");
-        return {
-          path,
-          cost: pathLength(path),
-          explored: i + 1,
-          exploredOrder: [],
-          debugLog,
-          success: false,
-          meta: { algorithm: "apf" },
-        };
+        return toPlannerResult(path, i + 1, debugLog, false);
       }
   
       const direction = normalize(fTotal);
       p = add(p, scale(direction, stepSize));
       path.push([...p]);
-    }
-  
-    debugLog.push("Stopped: max iterations reached.");
-    return {
-      path,
-      cost: pathLength(path),
-      explored: maxIterations,
-      exploredOrder: [],
-      debugLog,
-      success: false,
-      meta: { algorithm: "apf" },
-    };
   }
+
+  debugLog.push("Stopped: max iterations reached.");
+  return toPlannerResult(path, maxIterations, debugLog, false);
+}
   
   function pathLength(path) {
     let total = 0;
