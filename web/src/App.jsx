@@ -375,6 +375,57 @@ export default function App() {
           >
             Web Demo Source
           </a>
+          <a
+            href="https://www.linkedin.com/in/correagustavo/"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              padding: "10px 14px",
+              borderRadius: 999,
+              background: "#ffffffcc",
+              border: "1px solid rgba(15, 23, 42, 0.12)",
+              color: "#0f172a",
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            LinkedIn
+          </a>
+          <a
+            href="https://scholar.google.com/citations?user=XhF4Pa0AAAAJ&hl=en"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              padding: "10px 14px",
+              borderRadius: 999,
+              background: "#ffffffcc",
+              border: "1px solid rgba(15, 23, 42, 0.12)",
+              color: "#0f172a",
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Google Scholar
+          </a>
+          <a
+            href="https://arxiv.org/abs/2103.11470"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              padding: "10px 14px",
+              borderRadius: 999,
+              background: "#ffffffcc",
+              border: "1px solid rgba(15, 23, 42, 0.12)",
+              color: "#0f172a",
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            NeBula Paper
+          </a>
         </div>
 
         <h1
@@ -399,7 +450,7 @@ export default function App() {
             textAlign: "center",
           }}
         >
-          Building a simple autonomy stack.
+          Building a simple autonomy stack. By Gustavo J. Correa.
         </p>
 
         <p
@@ -412,18 +463,39 @@ export default function App() {
             textAlign: "center",
           }}
         >
-          The demos below are meant to make each component easier to understand, from sensing and estimation through
-          mapping, planning, and mission logic.
+          
         </p>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 22 }}>
+        <p
+          style={{
+            fontSize: 14,
+            lineHeight: 1.7,
+            maxWidth: 900,
+            color: "#64748b",
+            margin: "14px auto 0",
+            textAlign: "center",
+          }}
+        >
+          Inspired in part by{" "}
+          <a
+            href="https://arxiv.org/abs/2103.11470"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "#0f172a", fontWeight: 600, textDecoration: "none" }}
+          >
+            NeBula: Quest for Robotic Autonomy in Challenging Environments
+          </a>
+          .
+        </p>
+
+        {/* <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 22 }}>
           <StackBadge label="Sensor Fusion" accent="#f59e0b" />
           <StackBadge label="SLAM" accent="#14b8a6" />
           <StackBadge label="Traversability" accent="#16a34a" />
           <StackBadge label="Planning Stack" accent="#2563eb" />
           <StackBadge label="Mission Executive" accent="#7c3aed" />
           <StackBadge label="Classical Grid Planning" accent="#1d4ed8" />
-        </div>
+        </div> */}
       </section>
 
       <section
@@ -448,7 +520,7 @@ export default function App() {
           />
           <h2 style={{ margin: "0 0 8px", fontSize: 30, color: "#111827" }}>Autonomy System Modules</h2>
           <p style={{ margin: 0, color: "#475569", maxWidth: 920, lineHeight: 1.7 }}>
-            This is the high-level block diagram for a full autonomy stack. It starts with sensing and perception, feeds
+            This is work in progress high-level block diagram for a full autonomy stack. It starts with sensing and perception, feeds
             localization and mapping, builds world understanding for traversability and costmaps, then hands that model to
             planning, control, safety, and operator-facing tools.
           </p>
