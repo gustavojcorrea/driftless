@@ -2,46 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Grid, Line, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { astar, inflateGrid } from "../utils/astar";
+import { inflateGrid } from "../planners/astar";
+import { runPlanner } from "../planners";
 import DebugConsole from "./DebugConsole";
+import { MAPS } from "../scenarios/maps";
 
 
-const MAPS = {
-  open: {
-    rows: 10,
-    cols: 10,
-    obstacles: [
-      [2, 2], [2, 3], [2, 4],
-      [5, 5], [6, 5], [7, 5],
-      [7, 2], [7, 3],
-    ],
-    start: [0, 0],
-    goal: [9, 9],
-  },
-  warehouse: {
-    rows: 10,
-    cols: 10,
-    obstacles: [
-      [1, 4], [2, 4], [3, 4], [4, 4],
-      [6, 6], [6, 7], [6, 8],
-      [7, 2], [8, 2],
-    ],
-    start: [0, 0],
-    goal: [9, 8],
-  },
-  blocked: {
-    rows: 10,
-    cols: 10,
-    obstacles: [
-      [1, 1], [1, 2], [1, 3], [1, 4],
-      [2, 4], [3, 4], [4, 4],
-      [5, 4], [6, 4], [7, 4],
-      [8, 4], [8, 5], [8, 6],
-    ],
-    start: [0, 0],
-    goal: [9, 9],
-  },
-};
 
 function buildGrid(rows, cols, obstacles) {
   const grid = Array.from({ length: rows }, () => Array(cols).fill(0));
@@ -79,14 +45,50 @@ function Marker({ row, col, rows, cols, color }) {
   );
 }
 
-function PathLine({ rows, cols, path }) {
-  const points = path.map(([r, c]) => {
-    const [x, , z] = cellToWorld(r, c, rows, cols);
-    return [x, 0.12, z];
-  });
+// function PathLine({ rows, cols, path }) {
+//   const points = path.map(([r, c]) => {
+//     const [x, , z] = cellToWorld(r, c, rows, cols);
+//     return [x, 0.12, z];
+//   });
 
-  return <Line points={points} color="#2563eb" lineWidth={3} />;
-}
+//   return <Line points={points} color="#2563eb" lineWidth={3} />;
+// }
+
+// function PathLine({ rows, cols, path, algorithm }) {
+//     const points = path.map((pt) => {
+//       if (algorithm === "apf") {
+//         const col = pt[0];
+//         const row = pt[1];
+//         const x = col - cols / 2 + 0.5;
+//         const z = row - rows / 2 + 0.5;
+//         return [x, 0.12, z];
+//       }
+  
+//       const [r, c] = pt;
+//       const [x, , z] = cellToWorld(r, c, rows, cols);
+//       return [x, 0.12, z];
+//     });
+  
+//     return <Line points={points} color="#2563eb" lineWidth={3} />;
+//   }
+
+function PathLine({ rows, cols, path, algorithm }) {
+    const points = path.map((pt) => {
+      if (algorithm === "apf") {
+        const col = pt[0];
+        const row = pt[1];
+        const x = col - cols / 2 + 0.5;
+        const z = row - rows / 2 + 0.5;
+        return [x, 0.12, z];
+      }
+  
+      const [r, c] = pt;
+      const [x, , z] = cellToWorld(r, c, rows, cols);
+      return [x, 0.12, z];
+    });
+  
+    return <Line points={points} color="#2563eb" lineWidth={3} />;
+  }
 
 function ExploredCells({ rows, cols, exploredCells, visibleCount }) {
   return exploredCells.slice(0, visibleCount).map(([r, c], i) => {
@@ -170,6 +172,39 @@ function CurrentCell({ rows, cols, cell }) {
     );
   }
 
+function buildCostGrid(rows, cols, costZones = []) {
+const grid = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+for (const zone of costZones) {
+    for (const [r, c] of zone.cells) {
+    grid[r][c] = zone.cost;
+    }
+}
+
+return grid;
+}
+function CostCells({ rows, cols, costGrid }) {
+    const cells = [];
+  
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cost = costGrid[r][c];
+        if (cost <= 0) continue;
+  
+        const [x, , z] = cellToWorld(r, c, rows, cols);
+  
+        cells.push(
+          <mesh key={`${r}-${c}`} position={[x, 0.01, z]}>
+            <boxGeometry args={[0.95, 0.02, 0.95]} />
+            <meshStandardMaterial color="#fca5a5" transparent opacity={0.45} />
+          </mesh>
+        );
+      }
+    }
+  
+    return cells;
+  }
+
 export default function PlanningScene() {
   const [mapKey, setMapKey] = useState("open");
   const [speed, setSpeed] = useState(1.0);
@@ -177,31 +212,45 @@ export default function PlanningScene() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [diagonal, setDiagonal] = useState(true);
   const [showSearch, setShowSearch] = useState(true);
-  const [searchSpeed, setSearchSpeed] = useState(20);
+  const [searchSpeed, setSearchSpeed] = useState(7);
 
   const map = MAPS[mapKey];
-  const { rows, cols, obstacles, start, goal } = map;
+    const { rows, cols, obstacles, start, goal, costZones = [] } = map;
 
-  const rawGrid = useMemo(() => buildGrid(rows, cols, obstacles), [rows, cols, obstacles]);
+    const rawGrid = useMemo(() => buildGrid(rows, cols, obstacles), [rows, cols, obstacles]);
 
-  const inflationRadius = mapKey === "open" ? 1 : 0;
+    const costGrid = useMemo(() => {
+    return buildCostGrid(rows, cols, costZones);
+    }, [rows, cols, costZones]);
 
-  const grid = useMemo(
+    const inflationRadius = mapKey === "open" ? 1 : 0;
+
+    const grid = useMemo(
     () => inflateGrid(rawGrid, inflationRadius, start, goal),
     [rawGrid, inflationRadius, start, goal]
-  );
+    );
 
-//   const result = useMemo(() => {
-//     return astar(grid, start, goal, diagonal);
-//   }, [grid, start, goal, diagonal]);
+  const [algorithm, setAlgorithm] = useState("astar");
 
-  const result = useMemo(() => {
-    return astar(grid, start, goal, diagonal);
-  }, [grid, start, goal, diagonal]);
-const debugLog = result.debugLog || [];
+
+const result = useMemo(() => {
+    return runPlanner({
+      algorithm,
+      grid,
+      costGrid,
+      start,
+      goal,
+      diagonal,
+    });
+  }, [algorithm, grid, costGrid, start, goal, diagonal]);
+
+    const debugLog = result.debugLog || [];
 
   const path = result.path || [];
   const exploredOrder = result.exploredOrder || [];
+
+  const playbackCount =
+    algorithm === "apf" ? debugLog.length : exploredOrder.length;
   
 
   const [visibleExplored, setVisibleExplored] = useState(0);
@@ -211,33 +260,67 @@ const debugLog = result.debugLog || [];
         ? exploredOrder[visibleExplored - 1]
         : null;
 
-  useEffect(() => {
-    if (!showSearch) {
-      setVisibleExplored(exploredOrder.length);
-      return;
-    }
+    useEffect(() => {
+        if (!showSearch) {
+            setVisibleExplored(playbackCount);
+            return;
+        }
+        
+        setVisibleExplored(0);
+        
+        let i = 0;
+        const interval = setInterval(() => {
+            i += 1;
+            setVisibleExplored(i);
+            if (i >= playbackCount) clearInterval(interval);
+        }, 1000 / searchSpeed);
+        
+        return () => clearInterval(interval);
+    }, [playbackCount, showSearch, searchSpeed, mapKey, diagonal, algorithm]);
 
-    setVisibleExplored(0);
+//   useEffect(() => {
+//     if (!showSearch) {
+//       setVisibleExplored(exploredOrder.length);
+//       return;
+//     }
 
-    let i = 0;
-    const interval = setInterval(() => {
-      i += 1;
-      setVisibleExplored(i);
-      if (i >= exploredOrder.length) clearInterval(interval);
-    }, 1000 / searchSpeed);
+//     setVisibleExplored(0);
 
-    return () => clearInterval(interval);
-  }, [exploredOrder, showSearch, searchSpeed, mapKey, diagonal]);
+//     let i = 0;
+//     const interval = setInterval(() => {
+//       i += 1;
+//       setVisibleExplored(i);
+//       if (i >= exploredOrder.length) clearInterval(interval);
+//     }, 1000 / searchSpeed);
+
+//     return () => clearInterval(interval);
+//   }, [exploredOrder, showSearch, searchSpeed, mapKey, diagonal]);
+
+//   const pathPoints = useMemo(() => {
+//     return path.map(([r, c]) => {
+//       const [x, , z] = cellToWorld(r, c, rows, cols);
+//       return [x, 0.16, z];
+//     });
+//   }, [path, rows, cols]);
 
   const pathPoints = useMemo(() => {
-    return path.map(([r, c]) => {
+    return path.map((pt) => {
+      if (algorithm === "apf") {
+        const col = pt[0];
+        const row = pt[1];
+        const x = col - cols / 2 + 0.5;
+        const z = row - rows / 2 + 0.5;
+        return [x, 0.16, z];
+      }
+  
+      const [r, c] = pt;
       const [x, , z] = cellToWorld(r, c, rows, cols);
       return [x, 0.16, z];
     });
-  }, [path, rows, cols]);
+  }, [path, rows, cols, algorithm]);
 
-  const robotCanMove = isPlaying && visibleExplored >= exploredOrder.length;
-
+//   const robotCanMove = isPlaying && visibleExplored >= exploredOrder.length;
+  const robotCanMove = isPlaying && visibleExplored >= playbackCount;
   return (
     <div>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
@@ -306,6 +389,16 @@ const debugLog = result.debugLog || [];
         <button onClick={() => setIsPlaying((v) => !v)}>
           {isPlaying ? "Pause" : "Play"}
         </button>
+
+        <label>
+            Algorithm{" "}
+            <select value={algorithm} onChange={(e) => setAlgorithm(e.target.value)}>
+                <option value="astar">A*</option>
+                <option value="dijkstra">Dijkstra</option>
+                <option value="weighted_astar">Weighted A*</option>
+                <option value="apf">APF</option>
+            </select>
+        </label>
       </div>
 
       <div
@@ -335,9 +428,10 @@ const debugLog = result.debugLog || [];
 
       <Grid args={[10, 10]} cellSize={1} cellThickness={0.8} sectionSize={5} fadeDistance={20} fadeStrength={1} />
 
+      <CostCells rows={rows} cols={cols} costGrid={costGrid} />
       <Obstacles rows={rows} cols={cols} obstacles={obstacles} />
 
-      {showSearch && (
+      {showSearch && algorithm !== "apf" && (
         <ExploredCells
           rows={rows}
           cols={cols}
@@ -346,7 +440,7 @@ const debugLog = result.debugLog || [];
         />
       )}
 
-      {showSearch && (
+      {showSearch && algorithm !== "apf" && (
         <CurrentCell
           rows={rows}
           cols={cols}
@@ -358,8 +452,8 @@ const debugLog = result.debugLog || [];
       <Marker row={goal[0]} col={goal[1]} rows={rows} cols={cols} color="#dc2626" />
 
       {showPath && path.length > 0 && (
-        <PathLine rows={rows} cols={cols} path={path} />
-      )}
+        <PathLine rows={rows} cols={cols} path={path} algorithm={algorithm} />
+        )}
 
       {pathPoints.length > 0 && (
         <RobotDog pathPoints={pathPoints} speed={speed} isPlaying={robotCanMove} />
@@ -367,6 +461,7 @@ const debugLog = result.debugLog || [];
 
       <OrbitControls enablePan={false} />
     </Canvas>
+    
   </div>
 
   {/* RIGHT: Debug Console */}
@@ -388,24 +483,45 @@ const debugLog = result.debugLog || [];
   </div>
 </div>
 </div>
+<div style={{ marginTop: 10, fontSize: 14, color: "#555" }}>
+  <span style={{ marginRight: 12 }}>
+    <span style={{
+      display: "inline-block",
+      width: 12,
+      height: 12,
+      background: "#fca5a5",
+      marginRight: 6,
+      borderRadius: 2
+    }} />
+    High-cost terrain
+  </span>
+</div>
+<div style={{ marginTop: 14, color: "#444", fontSize: 15 }}>
+  {path.length > 0 ? (
+    <>
+      Algorithm: <strong>{algorithm.toUpperCase()}</strong>
+      {" · "}
+      Path cost: <strong>{result.cost.toFixed(2)}</strong>
+      {" · "}
+      Nodes explored: <strong>{result.explored}</strong>
+      {" · "}
+      Clearance: <strong>{inflationRadius}</strong>
+      {" · "}
+      
+    </>
+  ) : (
+    <>
+      Algorithm: <strong>{algorithm.toUpperCase()}</strong>
+      {" · "}
+      <strong>No path found</strong>
+      {" · "}
+      Nodes explored: <strong>{result.explored}</strong>
+      {" · "}
+      
+    </>
+  )}
+</div>
 
-      <div style={{ marginTop: 14, color: "#444", fontSize: 15 }}>
-        {path.length > 0 ? (
-          <>
-            Path cost: <strong>{result.cost.toFixed(2)}</strong>
-            {" · "}
-            Nodes explored: <strong>{result.explored}</strong>
-            {" · "}
-            Clearance: <strong>{inflationRadius}</strong>
-          </>
-        ) : (
-          <>
-            <strong>No path found</strong>
-            {" · "}
-            Nodes explored: <strong>{result.explored}</strong>
-          </>
-        )}
-      </div>
       </div>
     
   );

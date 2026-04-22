@@ -1,6 +1,4 @@
-import { useState } from "react";
 import PlanningScene from "./components/PlanningScene";
-import DebugConsole from "./components/DebugConsole";
 
 export default function App() {
   return (
@@ -31,43 +29,23 @@ export default function App() {
           }}
         >
           Driftless is a lightweight robotics sandbox for EKF-based localization,
-          path planning, and autonomy visualization. The goal is to make core
-          robotics ideas easier to inspect, modify, and extend.
+          path planning, and autonomy visualization.
         </p>
-
-        <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
-          <a
-            href="https://github.com/gustavojcorrea/driftless"
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              padding: "12px 16px",
-              border: "1px solid #ccc",
-              borderRadius: 10,
-              textDecoration: "none",
-              color: "inherit",
-            }}
-          >
-            View GitHub
-          </a>
-        </div>
       </section>
 
       <section>
         <div style={{ marginBottom: 18 }}>
           <h2 style={{ margin: "0 0 8px", fontSize: 28 }}>Planning Demo</h2>
-          <p style={{ margin: 0, color: "#444", maxWidth: 760, lineHeight: 1.6 }}>
-            Grid-based path planning with obstacle avoidance, search visualization,
-            and path cost evaluation.
-          </p>
+          {/* <p style={{ margin: 0, color: "#444", maxWidth: 760, lineHeight: 1.6 }}>
+            Compare A*, Dijkstra, and weighted A* on the same grid map.
+          </p> */}
         </div>
 
         <PlanningScene />
 
-        <div style={{ marginTop: 12, color: "#555", fontSize: 14 }}>
-          Blue cells show A* exploration. The blue line is the final minimum-cost
-          path.
-        </div>
+        {/* <div style={{ marginTop: 12, color: "#555", fontSize: 14 }}>
+          Blue cells show search exploration. The blue line is the final path.
+        </div> */}
       </section>
     </main>
   );
