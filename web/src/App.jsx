@@ -1,4 +1,6 @@
+import { useState } from "react";
 import PlanningScene from "./components/PlanningScene";
+import DebugConsole from "./components/DebugConsole";
 
 export default function App() {
   return (
@@ -12,7 +14,6 @@ export default function App() {
         overflowX: "hidden",
       }}
     >
-      {/* Splash / hero */}
       <section style={{ marginBottom: 56 }}>
         <h1 style={{ fontSize: 56, margin: "0 0 12px" }}>driftless</h1>
 
@@ -52,20 +53,20 @@ export default function App() {
         </div>
       </section>
 
-      {/* Planning row */}
       <section>
         <div style={{ marginBottom: 18 }}>
           <h2 style={{ margin: "0 0 8px", fontSize: 28 }}>Planning Demo</h2>
           <p style={{ margin: 0, color: "#444", maxWidth: 760, lineHeight: 1.6 }}>
-            Simple grid-based path planning with obstacles, start/goal markers,
-            and trajectory visualization.
+            Grid-based path planning with obstacle avoidance, search visualization,
+            and path cost evaluation.
           </p>
         </div>
 
         <PlanningScene />
 
-        <div style={{ marginTop: 14, color: "#444", fontSize: 15 }}>
-          Path cost: <strong>14.0</strong>
+        <div style={{ marginTop: 12, color: "#555", fontSize: 14 }}>
+          Blue cells show A* exploration. The blue line is the final minimum-cost
+          path.
         </div>
       </section>
     </main>

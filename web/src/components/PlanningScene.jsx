@@ -1,8 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Grid, Line } from "@react-three/drei";
+import { Grid, Line, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { astar, inflateGrid } from "../utils/astar";
+import DebugConsole from "./DebugConsole";
+
 
 const MAPS = {
   open: {
@@ -86,9 +88,25 @@ function PathLine({ rows, cols, path }) {
   return <Line points={points} color="#2563eb" lineWidth={3} />;
 }
 
+function ExploredCells({ rows, cols, exploredCells, visibleCount }) {
+  return exploredCells.slice(0, visibleCount).map(([r, c], i) => {
+    const [x, , z] = cellToWorld(r, c, rows, cols);
+    return (
+      <mesh key={i} position={[x, 0.02, z]}>
+        <boxGeometry args={[0.9, 0.04, 0.9]} />
+        <meshStandardMaterial color="#93c5fd" transparent opacity={0.6} />
+      </mesh>
+    );
+  });
+}
+
 function RobotDog({ pathPoints, speed = 1, isPlaying = true }) {
   const groupRef = useRef();
   const tRef = useRef(0);
+
+  useEffect(() => {
+    tRef.current = 0;
+  }, [pathPoints]);
 
   useFrame((_, delta) => {
     if (!groupRef.current || pathPoints.length < 2 || !isPlaying) return;
@@ -112,15 +130,17 @@ function RobotDog({ pathPoints, speed = 1, isPlaying = true }) {
   });
 
   return (
-    <group ref={groupRef} position={pathPoints[0] || [0, 0.2, 0]}>
+    <group ref={groupRef} position={pathPoints[0] || [0, 0.16, 0]}>
       <mesh position={[0, 0.45, 0]}>
         <boxGeometry args={[0.9, 0.35, 0.45]} />
         <meshStandardMaterial color="#f59e0b" />
       </mesh>
+
       <mesh position={[0, 0.52, 0.32]}>
         <boxGeometry args={[0.35, 0.22, 0.22]} />
         <meshStandardMaterial color="#fbbf24" />
       </mesh>
+
       {[
         [-0.25, 0.15, -0.15],
         [0.25, 0.15, -0.15],
@@ -136,34 +156,78 @@ function RobotDog({ pathPoints, speed = 1, isPlaying = true }) {
   );
 }
 
+function CurrentCell({ rows, cols, cell }) {
+    if (!cell) return null;
+  
+    const [r, c] = cell;
+    const [x, , z] = cellToWorld(r, c, rows, cols);
+  
+    return (
+      <mesh position={[x, 0.08, z]}>
+        <boxGeometry args={[0.95, 0.08, 0.95]} />
+        <meshStandardMaterial color="#fbbf24" transparent opacity={0.95} />
+      </mesh>
+    );
+  }
+
 export default function PlanningScene() {
   const [mapKey, setMapKey] = useState("open");
   const [speed, setSpeed] = useState(1.0);
   const [showPath, setShowPath] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
   const [diagonal, setDiagonal] = useState(true);
+  const [showSearch, setShowSearch] = useState(true);
+  const [searchSpeed, setSearchSpeed] = useState(20);
 
   const map = MAPS[mapKey];
   const { rows, cols, obstacles, start, goal } = map;
 
-//   const grid = useMemo(() => buildGrid(rows, cols, obstacles), [rows, cols, obstacles]);
-//   const rawGrid = useMemo(() => buildGrid(rows, cols, obstacles), [rows, cols, obstacles]);
-//   const grid = useMemo(() => inflateGrid(rawGrid, 1), [rawGrid]);
-//   const grid = useMemo(() => inflateGrid(rawGrid, 1, start, goal), [rawGrid, start, goal]);
+  const rawGrid = useMemo(() => buildGrid(rows, cols, obstacles), [rows, cols, obstacles]);
 
-    const rawGrid = useMemo(() => buildGrid(rows, cols, obstacles), [rows, cols, obstacles]);
+  const inflationRadius = mapKey === "open" ? 1 : 0;
 
-    const inflationRadius = mapKey === "open" ? 1 : 0;
-
-    const grid = useMemo(
+  const grid = useMemo(
     () => inflateGrid(rawGrid, inflationRadius, start, goal),
     [rawGrid, inflationRadius, start, goal]
-    );
+  );
+
+//   const result = useMemo(() => {
+//     return astar(grid, start, goal, diagonal);
+//   }, [grid, start, goal, diagonal]);
+
   const result = useMemo(() => {
     return astar(grid, start, goal, diagonal);
   }, [grid, start, goal, diagonal]);
+const debugLog = result.debugLog || [];
 
   const path = result.path || [];
+  const exploredOrder = result.exploredOrder || [];
+  
+
+  const [visibleExplored, setVisibleExplored] = useState(0);
+
+  const currentCell =
+    visibleExplored > 0 && visibleExplored <= exploredOrder.length
+        ? exploredOrder[visibleExplored - 1]
+        : null;
+
+  useEffect(() => {
+    if (!showSearch) {
+      setVisibleExplored(exploredOrder.length);
+      return;
+    }
+
+    setVisibleExplored(0);
+
+    let i = 0;
+    const interval = setInterval(() => {
+      i += 1;
+      setVisibleExplored(i);
+      if (i >= exploredOrder.length) clearInterval(interval);
+    }, 1000 / searchSpeed);
+
+    return () => clearInterval(interval);
+  }, [exploredOrder, showSearch, searchSpeed, mapKey, diagonal]);
 
   const pathPoints = useMemo(() => {
     return path.map(([r, c]) => {
@@ -171,6 +235,8 @@ export default function PlanningScene() {
       return [x, 0.16, z];
     });
   }, [path, rows, cols]);
+
+  const robotCanMove = isPlaying && visibleExplored >= exploredOrder.length;
 
   return (
     <div>
@@ -215,41 +281,113 @@ export default function PlanningScene() {
           8-connected
         </label>
 
+        <label>
+          <input
+            type="checkbox"
+            checked={showSearch}
+            onChange={(e) => setShowSearch(e.target.checked)}
+          />{" "}
+          Show search
+        </label>
+
+        <label>
+          Search speed{" "}
+          <input
+            type="range"
+            min="1"
+            max="60"
+            step="1"
+            value={searchSpeed}
+            onChange={(e) => setSearchSpeed(Number(e.target.value))}
+          />
+          <span style={{ marginLeft: 8 }}>{searchSpeed}</span>
+        </label>
+
         <button onClick={() => setIsPlaying((v) => !v)}>
           {isPlaying ? "Pause" : "Play"}
         </button>
       </div>
 
       <div
-        style={{
-          width: "100%",
-          maxWidth: "100%",
-          height: 420,
-          overflow: "hidden",
-          border: "1px solid #ddd",
-          borderRadius: 16,
-          boxSizing: "border-box",
-        }}
-      >
-        <Canvas
-          style={{ width: "100%", height: "100%", display: "block" }}
-          camera={{ position: [8, 10, 8], fov: 50 }}
-        >
-          <ambientLight intensity={0.9} />
-          <directionalLight position={[5, 10, 5]} intensity={1.2} />
+  style={{
+    display: "flex",
+    gap: 16,
+    alignItems: "stretch",
+  }}
+>
+  {/* LEFT: Canvas */}
+  <div
+    style={{
+      flex: 1,
+      height: 420,
+      overflow: "hidden",
+      border: "1px solid #ddd",
+      borderRadius: 16,
+      boxSizing: "border-box",
+    }}
+  >
+    <Canvas
+      style={{ width: "100%", height: "100%", display: "block" }}
+      camera={{ position: [8, 10, 8], fov: 50 }}
+    >
+      <ambientLight intensity={0.9} />
+      <directionalLight position={[5, 10, 5]} intensity={1.2} />
 
-          <Grid args={[10, 10]} cellSize={1} cellThickness={0.8} sectionSize={5} fadeDistance={20} fadeStrength={1} />
+      <Grid args={[10, 10]} cellSize={1} cellThickness={0.8} sectionSize={5} fadeDistance={20} fadeStrength={1} />
 
-          <Obstacles rows={rows} cols={cols} obstacles={obstacles} />
-          <Marker row={start[0]} col={start[1]} rows={rows} cols={cols} color="#16a34a" />
-          <Marker row={goal[0]} col={goal[1]} rows={rows} cols={cols} color="#dc2626" />
+      <Obstacles rows={rows} cols={cols} obstacles={obstacles} />
 
-          {showPath && path.length > 0 && <PathLine rows={rows} cols={cols} path={path} />}
-          {pathPoints.length > 0 && <RobotDog pathPoints={pathPoints} speed={speed} isPlaying={isPlaying} />}
+      {showSearch && (
+        <ExploredCells
+          rows={rows}
+          cols={cols}
+          exploredCells={exploredOrder}
+          visibleCount={visibleExplored}
+        />
+      )}
 
-          <OrbitControls enablePan={false} />
-        </Canvas>
-      </div>
+      {showSearch && (
+        <CurrentCell
+          rows={rows}
+          cols={cols}
+          cell={currentCell}
+        />
+      )}
+
+      <Marker row={start[0]} col={start[1]} rows={rows} cols={cols} color="#16a34a" />
+      <Marker row={goal[0]} col={goal[1]} rows={rows} cols={cols} color="#dc2626" />
+
+      {showPath && path.length > 0 && (
+        <PathLine rows={rows} cols={cols} path={path} />
+      )}
+
+      {pathPoints.length > 0 && (
+        <RobotDog pathPoints={pathPoints} speed={speed} isPlaying={robotCanMove} />
+      )}
+
+      <OrbitControls enablePan={false} />
+    </Canvas>
+  </div>
+
+  {/* RIGHT: Debug Console */}
+  <div
+  style={{
+    flex: 1,
+    height: 420,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+  }}
+>
+  <div style={{ marginBottom: 8, fontWeight: 600 }}>
+    Planner Debug Output
+  </div>
+
+  <div style={{ flex: 1, minHeight: 0 }}>
+    <DebugConsole lines={debugLog.slice(0, visibleExplored)} />
+  </div>
+</div>
+</div>
 
       <div style={{ marginTop: 14, color: "#444", fontSize: 15 }}>
         {path.length > 0 ? (
@@ -257,11 +395,20 @@ export default function PlanningScene() {
             Path cost: <strong>{result.cost.toFixed(2)}</strong>
             {" · "}
             Nodes explored: <strong>{result.explored}</strong>
+            {" · "}
+            Clearance: <strong>{inflationRadius}</strong>
           </>
         ) : (
-          <strong>No path found</strong>
+          <>
+            <strong>No path found</strong>
+            {" · "}
+            Nodes explored: <strong>{result.explored}</strong>
+          </>
         )}
       </div>
-    </div>
+      </div>
+    
   );
+  
+  
 }
